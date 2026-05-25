@@ -28,9 +28,9 @@ st.markdown("""
         }
     }
     
-    /* 主背景 - 淺灰白色 */
+    /* 主背景 - 單色 */
     .main {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+        background: #f5f7fa;
     }
     
     /* 標題 - 深色字體 */
@@ -52,7 +52,7 @@ st.markdown("""
     
     /* 統計卡片 */
     .metric-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        background: #ffffff;
         border: 1px solid #dee2e6;
         border-radius: 12px;
         padding: 1.2rem;
@@ -87,7 +87,7 @@ st.markdown("""
     }
     
     .stButton>button {
-        background: linear-gradient(135deg, #4a90e2, #357abd);
+        background: #4a90e2;
         color: #ffffff;
         font-weight: 600;
         border: none;
@@ -99,7 +99,7 @@ st.markdown("""
     }
     
     .stButton>button:hover {
-        background: linear-gradient(135deg, #357abd, #2868a8);
+        background: #357abd;
         box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
         transform: translateY(-2px);
     }
@@ -116,7 +116,7 @@ st.markdown("""
     }
     
     thead th {
-        background: linear-gradient(135deg, #e9ecef, #dee2e6);
+        background: #e9ecef;
         color: #2c3e50;
         font-weight: 700;
         padding: 1rem 0.75rem;
@@ -149,32 +149,32 @@ st.markdown("""
     }
     
     tbody tr:nth-child(even) td {
-        background: #f8f9fa;
+        background: #e9ecef;
     }
     
     tbody tr:hover td {
-        background: #e9ecef;
+        background: #dee2e6;
         transition: all 0.2s ease;
     }
     
-    /* 警示行樣式 */
+    /* 警示行樣式 - 整列統一色 */
     .warning-row td {
-        background: linear-gradient(90deg, rgba(255, 193, 7, 0.2), #ffffff) !important;
+        background: #fff3cd !important;
         border-left: 4px solid #ffc107 !important;
     }
     
     .alert-row td {
-        background: linear-gradient(90deg, rgba(220, 53, 69, 0.2), #ffffff) !important;
+        background: #f8d7da !important;
         border-left: 4px solid #dc3545 !important;
         animation: pulse-alert 2s ease-in-out infinite;
     }
     
     @keyframes pulse-alert {
         0%, 100% { 
-            background: linear-gradient(90deg, rgba(220, 53, 69, 0.2), #ffffff) !important;
+            background: #f8d7da !important;
         }
         50% { 
-            background: linear-gradient(90deg, rgba(220, 53, 69, 0.3), #ffffff) !important;
+            background: #f5c2c7 !important;
         }
     }
     
@@ -266,13 +266,13 @@ st.markdown("""
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #4a90e2, #357abd);
+        background: #4a90e2;
         color: white;
     }
     
     /* 進度條 */
     .stProgress > div > div {
-        background: linear-gradient(90deg, #4a90e2, #357abd);
+        background: #4a90e2;
     }
     
     /* 輸入框 */
@@ -538,6 +538,425 @@ def fetch_margin_trading(stock_code):
     except:
         return None
 
+
+
+# ==================== API 函數 ====================
+
+def fetch_twse_data(date_str):
+    """大盤法人資料"""
+    try:
+        url = f"https://www.twse.com.tw/fund/T86?response=json&date={date_str}&selectType=ALL"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get('stat') != 'OK' or not data.get('data'):
+            return None, "非交易日或資料尚未更新"
+        
+        stocks = []
+        for row in data['data']:
+            if not row[0] or len(row[0].strip()) < 4:
+                continue
+            
+            def parse_num(s):
+                try:
+                    return int(s.replace(',', ''))
+                except:
+                    return 0
+            
+            stocks.append({
+                'code': row[0].strip(),
+                'name': row[1].strip(),
+                'foreign': parse_num(row[4]),
+                'trust': parse_num(row[7]),
+                'dealer': parse_num(row[10]) + parse_num(row[13]),
+                'total': parse_num(row[14])
+            })
+        
+        return stocks, None
+    except Exception as e:
+        return None, f"錯誤：{str(e)}"
+
+def fetch_stock_price(stock_code):
+    """個股收盤價 - OpenAPI t187ap14_L"""
+    try:
+        url = "https://openapi.twse.com.tw/v1/opendata/t187ap14_L"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        for item in data:
+            if item.get('Code') == stock_code:
+                return {
+                    'code': item.get('Code'),
+                    'name': item.get('Name'),
+                    'close': float(item.get('Close', 0)),
+                    'change': float(item.get('Change', 0)),
+                    'volume': int(item.get('TradeVolume', 0))
+                }
+        return None
+    except:
+        return None
+
+def fetch_institutional_trading(stock_code, date_str):
+    """個股三大法人買賣超"""
+    try:
+        url = f"https://www.twse.com.tw/fund/T86?response=json&date={date_str}&selectType=ALL"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        if data.get('stat') != 'OK':
+            return None
+        
+        for row in data.get('data', []):
+            if row[0].strip() == stock_code:
+                def parse_num(s):
+                    try:
+                        return int(s.replace(',', ''))
+                    except:
+                        return 0
+                
+                return {
+                    'foreign': parse_num(row[4]),
+                    'trust': parse_num(row[7]),
+                    'dealer': parse_num(row[10]) + parse_num(row[13]),
+                    'total': parse_num(row[14])
+                }
+        return None
+    except:
+        return None
+
+def fetch_margin_trading(stock_code):
+    """信用交易 - 融資融券"""
+    try:
+        url = "https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        if data.get('stat') != 'OK':
+            return None
+        
+        for row in data.get('data', []):
+            if row[0].strip() == stock_code:
+                def parse_num(s):
+                    try:
+                        return int(s.replace(',', ''))
+                    except:
+                        return 0
+                
+                return {
+                    'margin_buy': parse_num(row[2]),
+                    'margin_sell': parse_num(row[3]),
+                    'margin_balance': parse_num(row[7]),
+                    'short_sell': parse_num(row[8]),
+                    'short_cover': parse_num(row[9]),
+                    'short_balance': parse_num(row[13])
+                }
+        return None
+    except:
+        return None
+
+def fetch_shareholding_distribution(stock_code):
+    """集保股權分散表 - TDCC OpenAPI"""
+    try:
+        url = "https://www.tdcc.com.tw/opendata/getOD.ashx?id=1-5"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        for item in data:
+            if item.get('證券代號') == stock_code:
+                def parse_int(s):
+                    try:
+                        return int(s.replace(',', ''))
+                    except:
+                        return 0
+                
+                return {
+                    'date': item.get('資料日期'),
+                    'total_holders': parse_int(item.get('持股人數', 0)),
+                    'over_1000': parse_int(item.get('持股1,000張以上人數', 0)),
+                    'under_10': parse_int(item.get('持股10張以下人數', 0)),
+                    'over_1000_shares': parse_int(item.get('持股1,000張以上股數', 0)),
+                    'under_10_shares': parse_int(item.get('持股10張以下股數', 0))
+                }
+        return None
+    except:
+        return None
+
+def fetch_monthly_revenue(stock_code):
+    """每月營收 - OpenAPI t187ap05_P"""
+    try:
+        url = "https://openapi.twse.com.tw/v1/opendata/t187ap05_P"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        revenue_data = []
+        for item in data:
+            if item.get('公司代號') == stock_code:
+                try:
+                    revenue_data.append({
+                        'month': item.get('資料年月'),
+                        'revenue': float(item.get('當月營收', 0)),
+                        'yoy': float(item.get('去年同期增減(%)', 0)),
+                        'mom': float(item.get('上月比較增減(%)', 0))
+                    })
+                except:
+                    pass
+        
+        return sorted(revenue_data, key=lambda x: x['month'], reverse=True)[:6]
+    except:
+        return []
+
+def fetch_director_shareholding(stock_code):
+    """董監持股 - OpenAPI t187ap12_L"""
+    try:
+        url = "https://openapi.twse.com.tw/v1/opendata/t187ap12_L"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        for item in data:
+            if item.get('公司代號') == stock_code:
+                try:
+                    return {
+                        'directors_shares': float(item.get('董監持股', 0)),
+                        'pledge_shares': float(item.get('質押股數', 0)),
+                        'pledge_ratio': float(item.get('質押比例', 0))
+                    }
+                except:
+                    pass
+        return None
+    except:
+        return None
+
+
+
+# ==================== 分析函數（按規格書實作）====================
+
+def analyze_short_term_institutional(institutional, margin, volume):
+    """短線法人多空角力分析"""
+    signals = []
+    score = 0
+    
+    if not institutional or not margin:
+        return None
+    
+    # 法人籌碼集中度
+    if volume > 0:
+        concentration = (abs(institutional['foreign']) + abs(institutional['trust']) + abs(institutional['dealer'])) / volume * 100
+        
+        if concentration > 10:
+            signals.append(f"✅ 法人籌碼集中度 {concentration:.1f}% (>10%)")
+            score += 2
+        else:
+            signals.append(f"📊 法人籌碼集中度 {concentration:.1f}%")
+    
+    # 融資變化
+    margin_change = margin['margin_buy'] - margin['margin_sell']
+    
+    if margin_change < -500 and institutional['total'] > 0:
+        signals.append("✅ 融資大減 + 法人買超（籌碼乾淨）")
+        score += 3
+    elif margin_change < 0 and institutional['total'] > 0:
+        signals.append("🟢 融資減少 + 法人買超")
+        score += 1
+    elif margin_change > 500 and institutional['total'] < 0:
+        signals.append("❌ 融資暴增 + 法人賣超（散戶追高）")
+        score -= 3
+    
+    # 借券賣出
+    if margin['short_balance'] > margin['margin_balance'] * 0.3:
+        signals.append("⚠️ 借券餘額偏高（空方力道強）")
+        score -= 1
+    
+    return {
+        'score': score,
+        'signals': signals,
+        'rating': '強多' if score >= 4 else '偏多' if score >= 2 else '中性' if score >= -1 else '偏空' if score >= -3 else '強空'
+    }
+
+def analyze_long_term_accumulation(shareholding):
+    """中長線大戶吸籌分析"""
+    if not shareholding:
+        return None
+    
+    signals = []
+    
+    # 計算比例
+    total = shareholding['total_holders']
+    if total == 0:
+        return None
+    
+    big_holder_ratio = (shareholding['over_1000'] / total) * 100
+    retail_ratio = (shareholding['under_10'] / total) * 100
+    
+    if big_holder_ratio > 5:
+        signals.append(f"✅ 千張大戶比例 {big_holder_ratio:.2f}% (高籌碼集中)")
+        
+    if retail_ratio < 40:
+        signals.append(f"✅ 散戶比例 {retail_ratio:.2f}% (低散戶持股)")
+    
+    return {
+        'big_holder_ratio': round(big_holder_ratio, 2),
+        'retail_ratio': round(retail_ratio, 2),
+        'big_holder_count': shareholding['over_1000'],
+        'retail_count': shareholding['under_10'],
+        'signals': signals,
+        'date': shareholding['date']
+    }
+
+def check_revenue_quality(revenue_data):
+    """基本面營收檢查"""
+    if not revenue_data or len(revenue_data) < 2:
+        return None
+    
+    signals = []
+    latest_yoy = revenue_data[0]['yoy']
+    
+    # 連續兩個月 YoY > 20%
+    if len(revenue_data) >= 2:
+        if revenue_data[0]['yoy'] > 20 and revenue_data[1]['yoy'] > 20:
+            signals.append(f"✅ 連續 2 月 YoY > 20% ({revenue_data[0]['yoy']:.1f}%, {revenue_data[1]['yoy']:.1f}%)")
+            quality = 'excellent'
+        elif latest_yoy > 20:
+            signals.append(f"🟢 最新 YoY {latest_yoy:.1f}% (>20%)")
+            quality = 'good'
+        elif latest_yoy > 0:
+            signals.append(f"📊 YoY {latest_yoy:.1f}% (正成長)")
+            quality = 'normal'
+        else:
+            signals.append(f"⚠️ YoY {latest_yoy:.1f}% (衰退)")
+            quality = 'poor'
+    
+    return {
+        'quality': quality,
+        'latest_yoy': latest_yoy,
+        'signals': signals
+    }
+
+def check_director_risk(director_data):
+    """董監風險檢查"""
+    if not director_data:
+        return None
+    
+    pledge_ratio = director_data['pledge_ratio']
+    
+    if pledge_ratio > 50:
+        return {
+            'level': 'high',
+            'ratio': pledge_ratio,
+            'message': f"🚨 高風險：董監質押率 {pledge_ratio:.1f}% (>50%)",
+            'color': 'red'
+        }
+    elif pledge_ratio > 30:
+        return {
+            'level': 'medium',
+            'ratio': pledge_ratio,
+            'message': f"⚠️ 中度風險：董監質押率 {pledge_ratio:.1f}%",
+            'color': 'orange'
+        }
+    else:
+        return {
+            'level': 'low',
+            'ratio': pledge_ratio,
+            'message': f"✅ 安全：董監質押率 {pledge_ratio:.1f}%",
+            'color': 'green'
+        }
+
+
+
+# ==================== 圖表函數 ====================
+
+def create_institutional_chart(history_data):
+    """法人買賣超圖表"""
+    if not history_data:
+        return None
+    
+    df = pd.DataFrame(history_data)
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(name='外資', x=df['date'], y=df['foreign'], marker_color='#4a90e2'))
+    fig.add_trace(go.Bar(name='投信', x=df['date'], y=df['trust'], marker_color='#f5c518'))
+    fig.add_trace(go.Bar(name='自營', x=df['date'], y=df['dealer'], marker_color='#00e882'))
+    
+    fig.update_layout(
+        title='三大法人近期買賣超（張）',
+        barmode='group',
+        template='plotly_white',
+        height=400,
+        xaxis_title='日期',
+        yaxis_title='張數',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    return fig
+
+def create_margin_chart(history_data):
+    """融資融券變化圖"""
+    if not history_data:
+        return None
+    
+    df = pd.DataFrame(history_data)
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    fig.add_trace(
+        go.Scatter(name='融資餘額', x=df['date'], y=df['margin_balance'], 
+                  line=dict(color='#28a745', width=2)),
+        secondary_y=False
+    )
+    
+    fig.add_trace(
+        go.Scatter(name='融券餘額', x=df['date'], y=df['short_balance'],
+                  line=dict(color='#dc3545', width=2)),
+        secondary_y=True
+    )
+    
+    fig.update_layout(
+        title='信用交易餘額變化',
+        template='plotly_white',
+        height=400,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    fig.update_yaxes(title_text="融資餘額（張）", secondary_y=False)
+    fig.update_yaxes(title_text="融券餘額（張）", secondary_y=True)
+    
+    return fig
+
+def create_revenue_chart(revenue_data):
+    """營收圖表"""
+    if not revenue_data:
+        return None
+    
+    df = pd.DataFrame(revenue_data)
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    fig.add_trace(
+        go.Bar(name='月營收', x=df['month'], y=df['revenue'], marker_color='#4a90e2'),
+        secondary_y=False
+    )
+    
+    fig.add_trace(
+        go.Scatter(name='YoY%', x=df['month'], y=df['yoy'],
+                  line=dict(color='#dc3545', width=3), mode='lines+markers'),
+        secondary_y=True
+    )
+    
+    fig.update_layout(
+        title='月營收與年增率',
+        template='plotly_white',
+        height=400,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    fig.update_yaxes(title_text="營收（千元）", secondary_y=False)
+    fig.update_yaxes(title_text="YoY %", secondary_y=True)
+    
+    return fig
+
+
+
 # ==================== 主程式 ====================
 
 # 標題和模式切換
@@ -556,6 +975,8 @@ with col_mode:
     )
 
 st.markdown("---")
+
+
 
 # ==================== 大盤追蹤模式 ====================
 
@@ -836,19 +1257,17 @@ if mode == "大盤追蹤":
     else:
         st.info("👆 系統會自動載入資料")
 
-# ==================== 個股分析模式 ====================
+
+
+# ==================== 個股分析模式（完整實作）====================
 
 else:
-    st.subheader("🔍 個股分析")
+    st.subheader("🔍 個股籌碼與基本面分析")
     
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        stock_code = st.text_input(
-            "股票代號",
-            value="2330",
-            placeholder="例：2330"
-        ).strip()
+        stock_code = st.text_input("股票代號", value="2330", placeholder="例：2330").strip()
     
     with col2:
         query_date = st.date_input("查詢日期", value=datetime.now())
@@ -856,19 +1275,24 @@ else:
     with col3:
         st.write("")
         st.write("")
-        analyze_btn = st.button("🔍 分析", type="primary", use_container_width=True)
+        analyze_btn = st.button("🔍 開始分析", type="primary", use_container_width=True)
     
     if analyze_btn and stock_code:
         date_str = query_date.strftime("%Y%m%d")
         
-        with st.spinner('查詢中...'):
+        with st.spinner('正在獲取資料...'):
+            # 獲取所有資料
             price_data = fetch_stock_price(stock_code)
             institutional_data = fetch_institutional_trading(stock_code, date_str)
             margin_data = fetch_margin_trading(stock_code)
+            shareholding_data = fetch_shareholding_distribution(stock_code)
+            revenue_data = fetch_monthly_revenue(stock_code)
+            director_data = fetch_director_shareholding(stock_code)
         
         if not price_data:
-            st.error(f"❌ 查無 {stock_code}")
+            st.error(f"❌ 查無股票代號 {stock_code}")
         else:
+            # 基本資訊
             st.markdown(f"### {price_data['name']} ({stock_code})")
             
             col1, col2, col3, col4 = st.columns(4)
@@ -881,18 +1305,93 @@ else:
             
             with col3:
                 if institutional_data:
-                    st.metric("法人", f"{institutional_data['total']:,} 張")
+                    st.metric("法人買賣超", f"{institutional_data['total']:,} 張")
             
             with col4:
                 if margin_data:
-                    st.metric("融資", f"{margin_data['margin_balance']:,} 張")
+                    st.metric("融資餘額", f"{margin_data['margin_balance']:,} 張")
             
             st.markdown("---")
             
-            tab1, tab2 = st.tabs(["📊 法人動向", "💳 信用交易"])
+            # 警示看板
+            st.subheader("⚠️ 智慧警示系統")
+            
+            col_alert1, col_alert2, col_alert3 = st.columns(3)
+            
+            with col_alert1:
+                # 短線警示
+                if institutional_data and margin_data:
+                    analysis = analyze_short_term_institutional(institutional_data, margin_data, price_data['volume'])
+                    if analysis:
+                        color = "#28a745" if analysis['score'] >= 2 else "#ffc107" if analysis['score'] >= -1 else "#dc3545"
+                        st.markdown(f"""
+                        <div class="metric-card" style="border-left: 4px solid {color};">
+                            <div class="stat-label">[短線] 法人動向</div>
+                            <div class="stat-value" style="color: {color};">{analysis['rating']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            with col_alert2:
+                # 長線警示
+                if shareholding_data:
+                    accumulation = analyze_long_term_accumulation(shareholding_data)
+                    if accumulation:
+                        st.markdown(f"""
+                        <div class="metric-card" style="border-left: 4px solid #4a90e2;">
+                            <div class="stat-label">[長線] 大戶籌碼</div>
+                            <div class="stat-value" style="color: #4a90e2;">{accumulation['big_holder_ratio']}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            with col_alert3:
+                # 風險警示
+                risk = check_director_risk(director_data)
+                if risk:
+                    risk_colors = {'high': '#dc3545', 'medium': '#ffc107', 'low': '#28a745'}
+                    st.markdown(f"""
+                    <div class="metric-card" style="border-left: 4px solid {risk_colors[risk['level']]};">
+                        <div class="stat-label">[風險] 董監質押</div>
+                        <div class="stat-value" style="color: {risk_colors[risk['level']]};">{risk['ratio']:.1f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # 分析頁籤
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "📊 短線分析",
+                "📈 中長線分析", 
+                "💰 財務數據",
+                "📉 圖表視覺化"
+            ])
             
             with tab1:
+                st.subheader("短線法人多空角力分析")
+                
+                if institutional_data and margin_data:
+                    analysis = analyze_short_term_institutional(institutional_data, margin_data, price_data['volume'])
+                    
+                    if analysis:
+                        col1, col2 = st.columns([1, 2])
+                        
+                        with col1:
+                            rating_colors = {'強多': '#28a745', '偏多': '#90ee90', '中性': '#ffc107', '偏空': '#ff8c42', '強空': '#dc3545'}
+                            st.markdown(f"""
+                            <div style="background: {rating_colors.get(analysis['rating'], '#ffc107')}22; border-left: 4px solid {rating_colors.get(analysis['rating'], '#ffc107')}; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                                <h2 style="color: {rating_colors.get(analysis['rating'], '#ffc107')}; margin: 0;">{analysis['rating']}</h2>
+                                <p style="color: #6c757d; margin-top: 0.5rem;">評分：{analysis['score']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.write("**市場訊號：**")
+                            for signal in analysis['signals']:
+                                st.write(signal)
+                
+                # 法人明細
                 if institutional_data:
+                    st.markdown("#### 三大法人買賣超明細")
+                    
                     col1, col2, col3, col4 = st.columns(4)
                     
                     with col1:
@@ -903,19 +1402,125 @@ else:
                         st.metric("自營", f"{institutional_data['dealer']:,} 張")
                     with col4:
                         st.metric("合計", f"{institutional_data['total']:,} 張")
-                else:
-                    st.info("查無法人資料")
+                
+                # 信用交易
+                if margin_data:
+                    st.markdown("#### 信用交易狀況")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        margin_change = margin_data['margin_buy'] - margin_data['margin_sell']
+                        st.metric("融資變化", f"{margin_change:+,} 張", f"餘額 {margin_data['margin_balance']:,}")
+                    
+                    with col2:
+                        short_change = margin_data['short_cover'] - margin_data['short_sell']
+                        st.metric("融券變化", f"{short_change:+,} 張", f"餘額 {margin_data['short_balance']:,}")
+                    
+                    with col3:
+                        if margin_data['margin_balance'] > 0:
+                            sr_ratio = (margin_data['short_balance'] / margin_data['margin_balance']) * 100
+                            st.metric("券資比", f"{sr_ratio:.2f}%")
             
             with tab2:
-                if margin_data:
+                st.subheader("中長線大戶吸籌分析")
+                
+                accumulation = analyze_long_term_accumulation(shareholding_data)
+                
+                if accumulation:
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.metric("融資餘額", f"{margin_data['margin_balance']:,} 張")
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="stat-label">千張大戶比例</div>
+                            <div class="stat-value" style="color: #4a90e2;">{accumulation['big_holder_ratio']}%</div>
+                            <p style="color: #6c757d; margin-top: 0.5rem; font-size: 0.9rem;">
+                                大戶人數：{accumulation['big_holder_count']:,} 人
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
                     with col2:
-                        st.metric("融券餘額", f"{margin_data['short_balance']:,} 張")
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="stat-label">散戶比例</div>
+                            <div class="stat-value" style="color: #ffc107;">{accumulation['retail_ratio']}%</div>
+                            <p style="color: #6c757d; margin-top: 0.5rem; font-size: 0.9rem;">
+                                散戶人數：{accumulation['retail_count']:,} 人
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    if accumulation['signals']:
+                        st.write("**籌碼結構分析：**")
+                        for signal in accumulation['signals']:
+                            st.write(signal)
+                    
+                    st.caption(f"📅 資料日期：{accumulation['date']} (每週五更新)")
                 else:
-                    st.info("查無信用交易資料")
+                    st.info("📊 集保股權資料每週五更新，請稍後查詢")
+            
+            with tab3:
+                st.subheader("財務數據")
+                
+                if revenue_data:
+                    # 營收品質
+                    quality = check_revenue_quality(revenue_data)
+                    
+                    if quality:
+                        quality_colors = {'excellent': '#28a745', 'good': '#90ee90', 'normal': '#ffc107', 'poor': '#dc3545'}
+                        quality_labels = {'excellent': '優良', 'good': '良好', 'normal': '普通', 'poor': '待改善'}
+                        
+                        st.markdown(f"""
+                        <div class="metric-card" style="border-left: 4px solid {quality_colors.get(quality['quality'], '#ffc107')};">
+                            <div class="stat-label">營收品質</div>
+                            <div class="stat-value" style="color: {quality_colors.get(quality['quality'], '#ffc107')};">
+                                {quality_labels.get(quality['quality'], '普通')}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        for signal in quality['signals']:
+                            st.write(signal)
+                    
+                    # 營收表格
+                    st.markdown("#### 近期月營收")
+                    df_revenue = pd.DataFrame(revenue_data)
+                    df_revenue.columns = ['年月', '營收（千元）', 'YoY%', 'MoM%']
+                    df_revenue['營收（千元）'] = df_revenue['營收（千元）'].apply(lambda x: f"{x:,.0f}")
+                    st.dataframe(df_revenue, use_container_width=True, hide_index=True)
+                else:
+                    st.info("📊 查無營收資料")
+                
+                # 董監持股
+                risk = check_director_risk(director_data)
+                
+                if risk:
+                    st.markdown("#### 董監持股風險")
+                    
+                    if risk['level'] == 'high':
+                        st.error(f"{risk['message']}\n\n⚠️ 董監事質押比例過高，大盤下跌時可能面臨斷頭風險")
+                    elif risk['level'] == 'medium':
+                        st.warning(risk['message'])
+                    else:
+                        st.success(risk['message'])
+            
+            with tab4:
+                st.subheader("圖表視覺化")
+                
+                # 這裡可以加入歷史資料圖表
+                st.info("💡 圖表功能需要歷史資料，目前顯示當日數據")
+                
+                # 營收圖表
+                if revenue_data:
+                    fig = create_revenue_chart(revenue_data)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+
+
+
 
 st.markdown("---")
-st.caption("📊 資料來源：證交所 | ⚠️ 僅供參考，非投資建議")
+st.caption("📊 資料來源：證交所 OpenAPI、集保所 | ⚠️ 僅供參考，非投資建議")
+
