@@ -13,193 +13,340 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 優化配色方案 - 護眼舒適
+# 優化配色 - 響應式設計
 st.markdown("""
 <style>
-    /* 主背景 */
-    .main {
-        background: linear-gradient(135deg, #1a1d29 0%, #2d3142 100%);
+    /* 響應式容器 */
+    .main .block-container {
+        max-width: 1200px;
+        padding: 1rem 2rem;
     }
     
-    /* 卡片背景 */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding: 1rem;
+        }
+    }
+    
+    /* 主背景 - 淺灰白色 */
+    .main {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    }
+    
+    /* 標題 - 深色字體 */
+    h1, h2, h3, h4 {
+        color: #2c3e50 !important;
+        font-weight: 700 !important;
+    }
+    
+    h1 {
+        font-size: 2rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 1.5rem !important;
+        }
+    }
+    
+    /* 統計卡片 */
     .metric-card {
-        background: linear-gradient(135deg, #2d3142 0%, #3a3f5c 100%);
-        border: 1px solid rgba(139, 166, 204, 0.2);
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 1px solid #dee2e6;
         border-radius: 12px;
         padding: 1.2rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1rem;
     }
     
-    /* 按鈕樣式 */
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    @media (max-width: 768px) {
+        .stat-value {
+            font-size: 1.4rem;
+        }
+    }
+    
+    /* 按鈕樣式 - 平均寬度 */
+    .stButton {
+        width: 100%;
+    }
+    
     .stButton>button {
-        background: linear-gradient(135deg, #4a90e2, #5dade2);
+        background: linear-gradient(135deg, #4a90e2, #357abd);
         color: #ffffff;
         font-weight: 600;
         border: none;
         border-radius: 10px;
-        padding: 0.6rem 1.8rem;
-        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        padding: 0.75rem 1.5rem;
+        width: 100%;
+        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
         transition: all 0.3s ease;
     }
     
     .stButton>button:hover {
-        background: linear-gradient(135deg, #5dade2, #4a90e2);
-        box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+        background: linear-gradient(135deg, #357abd, #2868a8);
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
         transform: translateY(-2px);
     }
     
-    /* 表格樣式 */
-    .dataframe {
-        background: #2d3142 !important;
-        border-radius: 10px !important;
+    /* 表格樣式 - 淺色背景 */
+    table {
+        width: 100%;
+        background: #ffffff;
+        border-radius: 12px;
         overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-collapse: separate;
+        border-spacing: 0;
     }
     
-    .dataframe thead th {
-        background: linear-gradient(135deg, #3a3f5c, #4a5170) !important;
-        color: #e8eaf6 !important;
-        font-weight: 600 !important;
-        padding: 1rem !important;
-        border: none !important;
-        text-align: center !important;
+    thead th {
+        background: linear-gradient(135deg, #e9ecef, #dee2e6);
+        color: #2c3e50;
+        font-weight: 700;
+        padding: 1rem 0.75rem;
+        text-align: center;
+        border: none;
+        font-size: 0.9rem;
     }
     
-    .dataframe tbody td {
-        background: #2d3142 !important;
-        color: #c5cae9 !important;
-        padding: 0.9rem !important;
-        border-bottom: 1px solid rgba(139, 166, 204, 0.1) !important;
-        text-align: center !important;
+    @media (max-width: 768px) {
+        thead th {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.75rem;
+        }
     }
     
-    .dataframe tbody tr:nth-child(even) td {
-        background: #3a3f5c !important;
+    tbody td {
+        background: #ffffff;
+        color: #495057;
+        padding: 0.9rem 0.75rem;
+        text-align: center;
+        border-bottom: 1px solid #f1f3f5;
+        font-size: 0.9rem;
     }
     
-    .dataframe tbody tr:hover td {
-        background: #4a5170 !important;
+    @media (max-width: 768px) {
+        tbody td {
+            padding: 0.7rem 0.5rem;
+            font-size: 0.8rem;
+        }
+    }
+    
+    tbody tr:nth-child(even) td {
+        background: #f8f9fa;
+    }
+    
+    tbody tr:hover td {
+        background: #e9ecef;
         transition: all 0.2s ease;
     }
     
     /* 警示行樣式 */
-    .warning-row {
-        background: linear-gradient(90deg, rgba(255, 193, 7, 0.15), transparent) !important;
+    .warning-row td {
+        background: linear-gradient(90deg, rgba(255, 193, 7, 0.2), #ffffff) !important;
         border-left: 4px solid #ffc107 !important;
     }
     
-    .alert-row {
-        background: linear-gradient(90deg, rgba(244, 67, 54, 0.2), transparent) !important;
-        border-left: 4px solid #f44336 !important;
+    .alert-row td {
+        background: linear-gradient(90deg, rgba(220, 53, 69, 0.2), #ffffff) !important;
+        border-left: 4px solid #dc3545 !important;
         animation: pulse-alert 2s ease-in-out infinite;
     }
     
     @keyframes pulse-alert {
         0%, 100% { 
-            background: linear-gradient(90deg, rgba(244, 67, 54, 0.2), transparent) !important;
+            background: linear-gradient(90deg, rgba(220, 53, 69, 0.2), #ffffff) !important;
         }
         50% { 
-            background: linear-gradient(90deg, rgba(244, 67, 54, 0.3), transparent) !important;
+            background: linear-gradient(90deg, rgba(220, 53, 69, 0.3), #ffffff) !important;
         }
     }
     
-    /* 標籤顏色 */
+    /* 數字顏色 */
     .positive {
-        color: #66bb6a !important;
-        font-weight: 600;
+        color: #28a745 !important;
+        font-weight: 700;
     }
     
     .negative {
-        color: #ef5350 !important;
-        font-weight: 600;
+        color: #dc3545 !important;
+        font-weight: 700;
     }
     
     .neutral {
-        color: #8ba6cc !important;
+        color: #6c757d !important;
     }
     
-    /* 統計卡片 */
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-    }
-    
-    .stat-label {
-        font-size: 0.9rem;
-        color: #8ba6cc;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    /* 資訊框 */
-    .stAlert {
-        background: rgba(74, 144, 226, 0.1) !important;
-        border-left: 4px solid #4a90e2 !important;
-        color: #b3d9ff !important;
-        border-radius: 8px;
-    }
-    
-    /* Tab 樣式 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: #2d3142;
-        padding: 0.5rem;
-        border-radius: 10px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        color: #8ba6cc;
-        border-radius: 8px;
-        padding: 0.8rem 1.5rem;
-        font-weight: 600;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #4a90e2, #5dade2);
-        color: white;
-    }
-    
-    /* 進度條 */
-    .stProgress > div > div {
-        background: linear-gradient(90deg, #4a90e2, #5dade2);
-    }
-    
-    /* 標題 */
-    h1, h2, h3 {
-        color: #e8eaf6 !important;
-    }
-    
-    /* 表格內的徽章 */
+    /* 徽章 */
     .badge {
         display: inline-block;
-        padding: 0.3rem 0.8rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 768px) {
+        .badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+        }
     }
     
     .badge-normal {
-        background: rgba(139, 166, 204, 0.2);
-        color: #8ba6cc;
+        background: #e9ecef;
+        color: #6c757d;
     }
     
     .badge-warning {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-        border: 1px solid rgba(255, 193, 7, 0.3);
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffc107;
     }
     
     .badge-alert {
-        background: rgba(244, 67, 54, 0.2);
-        color: #f44336;
-        border: 1px solid rgba(244, 67, 54, 0.4);
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #dc3545;
         animation: badge-pulse 2s ease-in-out infinite;
     }
     
     @keyframes badge-pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
+    }
+    
+    /* 資訊框 */
+    .stAlert {
+        background: #d1ecf1 !important;
+        border-left: 4px solid #17a2b8 !important;
+        color: #0c5460 !important;
+        border-radius: 8px;
+    }
+    
+    /* Tab 樣式 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: #ffffff;
+        padding: 0.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        color: #6c757d;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+        .stTabs [data-baseweb="tab"] {
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+        }
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #4a90e2, #357abd);
+        color: white;
+    }
+    
+    /* 進度條 */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #4a90e2, #357abd);
+    }
+    
+    /* 輸入框 */
+    .stTextInput > div > div > input {
+        background: #ffffff;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        color: #495057;
+        font-size: 1rem;
+        padding: 0.75rem;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    }
+    
+    /* 日期選擇器 */
+    .stDateInput > div > div > input {
+        background: #ffffff;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    /* Radio 按鈕組 */
+    .stRadio > div {
+        background: #ffffff;
+        padding: 0.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stRadio > div > label > div[data-testid="stMarkdownContainer"] > p {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    /* 表格容器 */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+    }
+    
+    /* 響應式表格 */
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.75rem;
+        }
+        
+        .table-container {
+            margin: 0.5rem -1rem;
+            padding: 0 1rem;
+        }
+    }
+    
+    /* Metric 組件樣式 */
+    [data-testid="stMetricValue"] {
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+    
+    [data-testid="stMetricDelta"] {
+        font-size: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        [data-testid="stMetricValue"] {
+            font-size: 1.3rem;
+        }
+        
+        [data-testid="stMetricDelta"] {
+            font-size: 0.85rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -212,15 +359,12 @@ HISTORY_FILE = DATA_DIR / "history.json"
 # ==================== 工具函數 ====================
 
 def get_trading_days(end_date, num_days=10):
-    """取得過去 N 個交易日"""
     trading_days = []
     current = end_date
-    
     while len(trading_days) < num_days:
         if current.weekday() < 5:
             trading_days.append(current.strftime("%Y%m%d"))
         current -= timedelta(days=1)
-    
     return trading_days
 
 def load_history():
@@ -268,7 +412,7 @@ def get_streak_dates(code, history_type, streak_count):
         return []
     
     dates = sorted(history[key]['dates'], reverse=True)[:streak_count]
-    return [datetime.strptime(d, "%Y%m%d").strftime("%Y/%m/%d") for d in dates]
+    return [datetime.strptime(d, "%Y%m%d").strftime("%m/%d") for d in dates]
 
 def format_number(n):
     abs_n = abs(n)
@@ -282,7 +426,6 @@ def format_number(n):
         return f"{n:,}"
 
 def style_number(n):
-    """數字加上顏色樣式"""
     if n > 0:
         return f'<span class="positive">+{format_number(n)}</span>'
     elif n < 0:
@@ -324,6 +467,77 @@ def fetch_twse_data(date_str):
     except Exception as e:
         return None, f"錯誤：{str(e)}"
 
+def fetch_stock_price(stock_code):
+    try:
+        url = "https://openapi.twse.com.tw/v1/opendata/t187ap14_L"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        for item in data:
+            if item.get('Code') == stock_code:
+                return {
+                    'code': item.get('Code'),
+                    'name': item.get('Name'),
+                    'close': float(item.get('Close', 0)),
+                    'change': float(item.get('Change', 0)),
+                    'volume': int(item.get('TradeVolume', 0))
+                }
+        return None
+    except:
+        return None
+
+def fetch_institutional_trading(stock_code, date_str):
+    try:
+        url = f"https://www.twse.com.tw/fund/T86?response=json&date={date_str}&selectType=ALL"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        if data.get('stat') != 'OK':
+            return None
+        
+        for row in data.get('data', []):
+            if row[0].strip() == stock_code:
+                def parse_num(s):
+                    try:
+                        return int(s.replace(',', ''))
+                    except:
+                        return 0
+                
+                return {
+                    'foreign': parse_num(row[4]),
+                    'trust': parse_num(row[7]),
+                    'dealer': parse_num(row[10]) + parse_num(row[13]),
+                    'total': parse_num(row[14])
+                }
+        return None
+    except:
+        return None
+
+def fetch_margin_trading(stock_code):
+    try:
+        url = "https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json"
+        response = requests.get(url, timeout=15)
+        data = response.json()
+        
+        if data.get('stat') != 'OK':
+            return None
+        
+        for row in data.get('data', []):
+            if row[0].strip() == stock_code:
+                def parse_num(s):
+                    try:
+                        return int(s.replace(',', ''))
+                    except:
+                        return 0
+                
+                return {
+                    'margin_balance': parse_num(row[7]),
+                    'short_balance': parse_num(row[13])
+                }
+        return None
+    except:
+        return None
+
 # ==================== 主程式 ====================
 
 # 標題和模式切換
@@ -351,26 +565,26 @@ if mode == "大盤追蹤":
     if 'auto_loaded' not in st.session_state:
         st.session_state['auto_loaded'] = False
     
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.info("💡 系統會自動載入過去 10 個交易日資料，計算連續買賣超趨勢")
-    
-    with col2:
         if st.button("📥 載入歷史資料", use_container_width=True):
             st.session_state['auto_loaded'] = True
             st.session_state['load_history'] = True
     
-    with col3:
+    with col2:
         if st.button("🔄 更新今日", type="primary", use_container_width=True):
             st.session_state['update_today'] = True
+    
+    with col3:
+        st.info("過去10日資料")
     
     # 自動載入
     if not st.session_state['auto_loaded']:
         st.session_state['auto_loaded'] = True
         st.session_state['load_history'] = True
     
-    # 載入歷史資料
+    # 載入歷史
     if st.session_state.get('load_history'):
         trading_days = get_trading_days(datetime.now(), 10)
         
@@ -379,7 +593,7 @@ if mode == "大盤追蹤":
         
         all_data = {}
         for i, date_str in enumerate(trading_days):
-            status_text.text(f"正在載入 {date_str[:4]}/{date_str[4:6]}/{date_str[6:8]} 的資料...")
+            status_text.text(f"載入 {date_str[:4]}/{date_str[4:6]}/{date_str[6:8]}")
             
             stocks, error = fetch_twse_data(date_str)
             if stocks:
@@ -390,7 +604,6 @@ if mode == "大盤追蹤":
         progress_bar.empty()
         status_text.empty()
         
-        # 更新歷史紀錄
         for date_str, stocks in all_data.items():
             buy_stocks = [s for s in stocks if s['total'] > 0]
             sell_stocks = [s for s in stocks if s['total'] < 0]
@@ -440,14 +653,14 @@ if mode == "大盤追蹤":
             st.session_state['data_loaded'] = True
         
         st.session_state['load_history'] = False
-        st.success(f"✅ 已載入 {len(all_data)} 個交易日的資料")
+        st.success(f"✅ 已載入 {len(all_data)} 個交易日")
         st.rerun()
     
     # 更新今日
     if st.session_state.get('update_today'):
         today = datetime.now().strftime("%Y%m%d")
         
-        with st.spinner('正在更新今日資料...'):
+        with st.spinner('更新中...'):
             stocks, error = fetch_twse_data(today)
         
         if error:
@@ -485,7 +698,7 @@ if mode == "大盤追蹤":
             st.session_state['sell_data'] = sell_top10
             st.session_state['date_key'] = today
             st.session_state['data_loaded'] = True
-            st.success(f"✅ 今日資料更新成功")
+            st.success("✅ 更新成功")
         
         st.session_state['update_today'] = False
         st.rerun()
@@ -496,20 +709,20 @@ if mode == "大盤追蹤":
         sell_data = st.session_state.get('sell_data', [])
         date_key = st.session_state.get('date_key', '')
         
-        # 統計資訊
+        # 統計卡片
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.markdown(f"""
             <div class="metric-card">
                 <div class="stat-label">查詢日期</div>
-                <div class="stat-value" style="color: #5dade2;">{date_key[:4]}/{date_key[4:6]}/{date_key[6:8]}</div>
+                <div class="stat-value" style="color: #4a90e2;">{date_key[:4]}/{date_key[4:6]}/{date_key[6:8]}</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             max_buy = max([s['streak'] for s in buy_data], default=0)
-            color = "#f44336" if max_buy >= 5 else "#ffc107" if max_buy >= 3 else "#5dade2"
+            color = "#dc3545" if max_buy >= 5 else "#ffc107" if max_buy >= 3 else "#4a90e2"
             st.markdown(f"""
             <div class="metric-card">
                 <div class="stat-label">最高連買</div>
@@ -531,7 +744,7 @@ if mode == "大盤追蹤":
             st.markdown(f"""
             <div class="metric-card">
                 <div class="stat-label">紅色警示</div>
-                <div class="stat-value" style="color: #f44336;">{alert_count} 檔</div>
+                <div class="stat-value" style="color: #dc3545;">{alert_count} 檔</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -540,88 +753,169 @@ if mode == "大盤追蹤":
         # 連續買超提示
         streak_3_plus = [s for s in buy_data if s['streak'] >= 3]
         if streak_3_plus:
-            st.warning(f"⚠️ 發現 {len(streak_3_plus)} 檔連續買超 3 天以上的股票")
+            st.warning(f"⚠️ 發現 {len(streak_3_plus)} 檔連續買超 ≥3 天")
             for stock in streak_3_plus:
                 dates = get_streak_dates(stock['code'], 'buy', stock['streak'])
-                st.info(f"📌 **{stock['code']} {stock['name']}** - 連買 **{stock['streak']}** 天  \n連續日期：{' → '.join(dates)}")
+                st.info(f"📌 **{stock['code']} {stock['name']}** 連買 **{stock['streak']}** 天 ({' → '.join(dates)})")
         
-        # 表格顯示
+        # 表格
         tab1, tab2 = st.tabs(["▲ 買超 TOP 10", "▼ 賣超 TOP 10"])
         
         with tab1:
-            st.subheader("▲ 三大法人合計買超 TOP 10")
+            st.subheader("三大法人合計買超 TOP 10")
             
             if buy_data:
-                # 建立表格資料
-                df_data = []
+                html = '<div class="table-container"><table>'
+                html += '<thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>外資</th><th>投信</th><th>自營</th><th>合計</th><th>連買</th></tr></thead>'
+                html += '<tbody>'
+                
                 for i, stock in enumerate(buy_data, 1):
-                    # 連續天數徽章
+                    row_class = ''
                     if stock['streak'] >= 5:
-                        badge = f'<span class="badge badge-alert">{stock["streak"]} 天</span>'
+                        row_class = 'alert-row'
+                        badge = f'<span class="badge badge-alert">{stock["streak"]}天</span>'
                     elif stock['streak'] >= 3:
-                        badge = f'<span class="badge badge-warning">{stock["streak"]} 天</span>'
+                        row_class = 'warning-row'
+                        badge = f'<span class="badge badge-warning">{stock["streak"]}天</span>'
                     else:
-                        badge = f'<span class="badge badge-normal">{stock["streak"]} 天</span>'
+                        badge = f'<span class="badge badge-normal">{stock["streak"]}天</span>'
                     
-                    df_data.append({
-                        '排名': f'{i:02d}',
-                        '代號': stock['code'],
-                        '名稱': stock['name'],
-                        '外資 (合計)': style_number(stock['foreign']),
-                        '投信 (合計)': style_number(stock['trust']),
-                        '自營 (合計)': style_number(stock['dealer']),
-                        '合計 (張)': style_number(stock['total']),
-                        '連買天數': badge
-                    })
+                    html += f'<tr class="{row_class}">'
+                    html += f'<td>{i:02d}</td>'
+                    html += f'<td><strong>{stock["code"]}</strong></td>'
+                    html += f'<td>{stock["name"]}</td>'
+                    html += f'<td>{style_number(stock["foreign"])}</td>'
+                    html += f'<td>{style_number(stock["trust"])}</td>'
+                    html += f'<td>{style_number(stock["dealer"])}</td>'
+                    html += f'<td>{style_number(stock["total"])}</td>'
+                    html += f'<td>{badge}</td>'
+                    html += '</tr>'
                 
-                df = pd.DataFrame(df_data)
-                
-                # 顯示表格
-                st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-                
-                st.caption("💡 註：外資、投信、自營皆為當日合計數值，不包含分點明細")
+                html += '</tbody></table></div>'
+                st.markdown(html, unsafe_allow_html=True)
+                st.caption("💡 外資、投信、自營為當日合計數")
             else:
                 st.info("本日無買超資料")
         
         with tab2:
-            st.subheader("▼ 三大法人合計賣超 TOP 10")
+            st.subheader("三大法人合計賣超 TOP 10")
             
             if sell_data:
-                df_data = []
+                html = '<div class="table-container"><table>'
+                html += '<thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>外資</th><th>投信</th><th>自營</th><th>合計</th><th>連賣</th></tr></thead>'
+                html += '<tbody>'
+                
                 for i, stock in enumerate(sell_data, 1):
+                    row_class = ''
                     if stock['streak'] >= 5:
-                        badge = f'<span class="badge badge-alert">{stock["streak"]} 天</span>'
+                        row_class = 'alert-row'
+                        badge = f'<span class="badge badge-alert">{stock["streak"]}天</span>'
                     elif stock['streak'] >= 3:
-                        badge = f'<span class="badge badge-warning">{stock["streak"]} 天</span>'
+                        row_class = 'warning-row'
+                        badge = f'<span class="badge badge-warning">{stock["streak"]}天</span>'
                     else:
-                        badge = f'<span class="badge badge-normal">{stock["streak"]} 天</span>'
+                        badge = f'<span class="badge badge-normal">{stock["streak"]}天</span>'
                     
-                    df_data.append({
-                        '排名': f'{i:02d}',
-                        '代號': stock['code'],
-                        '名稱': stock['name'],
-                        '外資 (合計)': style_number(stock['foreign']),
-                        '投信 (合計)': style_number(stock['trust']),
-                        '自營 (合計)': style_number(stock['dealer']),
-                        '合計 (張)': style_number(stock['total']),
-                        '連賣天數': badge
-                    })
+                    html += f'<tr class="{row_class}">'
+                    html += f'<td>{i:02d}</td>'
+                    html += f'<td><strong>{stock["code"]}</strong></td>'
+                    html += f'<td>{stock["name"]}</td>'
+                    html += f'<td>{style_number(stock["foreign"])}</td>'
+                    html += f'<td>{style_number(stock["trust"])}</td>'
+                    html += f'<td>{style_number(stock["dealer"])}</td>'
+                    html += f'<td>{style_number(stock["total"])}</td>'
+                    html += f'<td>{badge}</td>'
+                    html += '</tr>'
                 
-                df = pd.DataFrame(df_data)
-                st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-                
-                st.caption("💡 註：外資、投信、自營皆為當日合計數值，不包含分點明細")
+                html += '</tbody></table></div>'
+                st.markdown(html, unsafe_allow_html=True)
+                st.caption("💡 外資、投信、自營為當日合計數")
             else:
                 st.info("本日無賣超資料")
     
     else:
-        st.info("👆 點擊「載入歷史資料」開始分析")
+        st.info("👆 系統會自動載入資料")
 
 # ==================== 個股分析模式 ====================
 
 else:
     st.subheader("🔍 個股分析")
-    st.info("個股分析功能開發中...")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        stock_code = st.text_input(
+            "股票代號",
+            value="2330",
+            placeholder="例：2330"
+        ).strip()
+    
+    with col2:
+        query_date = st.date_input("查詢日期", value=datetime.now())
+    
+    with col3:
+        st.write("")
+        st.write("")
+        analyze_btn = st.button("🔍 分析", type="primary", use_container_width=True)
+    
+    if analyze_btn and stock_code:
+        date_str = query_date.strftime("%Y%m%d")
+        
+        with st.spinner('查詢中...'):
+            price_data = fetch_stock_price(stock_code)
+            institutional_data = fetch_institutional_trading(stock_code, date_str)
+            margin_data = fetch_margin_trading(stock_code)
+        
+        if not price_data:
+            st.error(f"❌ 查無 {stock_code}")
+        else:
+            st.markdown(f"### {price_data['name']} ({stock_code})")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("收盤價", f"${price_data['close']:.2f}", f"{price_data['change']:+.2f}")
+            
+            with col2:
+                st.metric("成交量", f"{price_data['volume']:,} 張")
+            
+            with col3:
+                if institutional_data:
+                    st.metric("法人", f"{institutional_data['total']:,} 張")
+            
+            with col4:
+                if margin_data:
+                    st.metric("融資", f"{margin_data['margin_balance']:,} 張")
+            
+            st.markdown("---")
+            
+            tab1, tab2 = st.tabs(["📊 法人動向", "💳 信用交易"])
+            
+            with tab1:
+                if institutional_data:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("外資", f"{institutional_data['foreign']:,} 張")
+                    with col2:
+                        st.metric("投信", f"{institutional_data['trust']:,} 張")
+                    with col3:
+                        st.metric("自營", f"{institutional_data['dealer']:,} 張")
+                    with col4:
+                        st.metric("合計", f"{institutional_data['total']:,} 張")
+                else:
+                    st.info("查無法人資料")
+            
+            with tab2:
+                if margin_data:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric("融資餘額", f"{margin_data['margin_balance']:,} 張")
+                    with col2:
+                        st.metric("融券餘額", f"{margin_data['short_balance']:,} 張")
+                else:
+                    st.info("查無信用交易資料")
 
 st.markdown("---")
-st.caption("📊 資料來源：證交所 T86（三大法人合計數） | ⚠️ 僅供參考，非投資建議")
+st.caption("📊 資料來源：證交所 | ⚠️ 僅供參考，非投資建議")
