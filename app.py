@@ -4,6 +4,15 @@ import requests
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+# 嘗試 import yfinance（手機版需要）
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
 
 # 頁面設定
 st.set_page_config(
@@ -468,9 +477,23 @@ def fetch_twse_data(date_str):
         return None, f"錯誤：{str(e)}"
 
 def fetch_stock_price(stock_code):
+    """個股收盤價 - OpenAPI t187ap14_L"""
     try:
         url = "https://openapi.twse.com.tw/v1/opendata/t187ap14_L"
-        response = requests.get(url, timeout=15)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        # 檢查回應狀態
+        if response.status_code == 403:
+            st.error("⚠️ API 存取被拒絕 (403)。證交所 API 可能有 IP 限制。")
+            return None
+        
+        if response.status_code != 200:
+            st.error(f"⚠️ API 回應異常: HTTP {response.status_code}")
+            return None
+        
         data = response.json()
         
         for item in data:
@@ -482,8 +505,19 @@ def fetch_stock_price(stock_code):
                     'change': float(item.get('Change', 0)),
                     'volume': int(item.get('TradeVolume', 0))
                 }
+        
+        # 找不到該股票
+        st.warning(f"⚠️ 在收盤資料中找不到股票代號 {stock_code}。請確認代號正確且為上市股票。")
         return None
-    except:
+        
+    except requests.exceptions.Timeout:
+        st.error("⏱️ API 請求逾時，請稍後再試")
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error("🌐 網路連線錯誤，請檢查網路")
+        return None
+    except Exception as e:
+        st.error(f"❌ 發生錯誤: {str(e)}")
         return None
 
 def fetch_institutional_trading(stock_code, date_str):
@@ -614,6 +648,64 @@ def fetch_director_shareholding(stock_code):
     except:
         return None
 
+# ==================== Yahoo Finance API（手機版）====================
+
+def fetch_stock_yfinance(stock_code, period="1mo"):
+    """使用 Yahoo Finance API 獲取股票資訊（手機版）"""
+    if not YFINANCE_AVAILABLE:
+        st.error("❌ yfinance 套件未安裝。請執行：pip install yfinance")
+        return None
+    
+    try:
+        # 台股代號格式：2330.TW
+        ticker_symbol = f"{stock_code}.TW"
+        ticker = yf.Ticker(ticker_symbol)
+        
+        # 獲取股票資訊
+        info = ticker.info
+        
+        # 獲取歷史資料
+        period_map = {
+            "1日": "1d",
+            "5日": "5d",
+            "1個月": "1mo",
+            "3個月": "3mo",
+            "6個月": "6mo"
+        }
+        
+        hist = ticker.history(period=period_map.get(period, "1mo"))
+        
+        if hist.empty:
+            st.warning(f"⚠️ Yahoo Finance 查無股票代號 {stock_code}.TW")
+            return None
+        
+        # 最新數據
+        latest = hist.iloc[-1]
+        prev_close = hist.iloc[-2]['Close'] if len(hist) > 1 else latest['Open']
+        
+        # 計算漲跌
+        change = latest['Close'] - prev_close
+        change_pct = (change / prev_close) * 100
+        
+        return {
+            'code': stock_code,
+            'name': info.get('longName', info.get('shortName', stock_code)),
+            'close': float(latest['Close']),
+            'open': float(latest['Open']),
+            'high': float(latest['High']),
+            'low': float(latest['Low']),
+            'volume': int(latest['Volume']) // 1000,  # 轉為張數
+            'change': float(change),
+            'change_pct': float(change_pct),
+            'prev_close': float(prev_close),
+            'history': hist,  # 歷史資料用於繪圖
+            'info': info  # 公司資訊
+        }
+        
+    except Exception as e:
+        st.error(f"❌ Yahoo Finance 錯誤: {str(e)}")
+        st.info("💡 提示：請確認股票代號正確，且為上市股票（非上櫃）")
+        return None
 
 
 # ==================== 分析函數（按規格書實作）====================
@@ -1151,13 +1243,54 @@ if mode == "大盤追蹤":
 else:
     st.subheader("🔍 個股籌碼與基本面分析")
     
+    # 查詢模式選擇
+    st.markdown("### 📱 選擇查詢模式")
+    
+    query_mode = st.radio(
+        "查詢模式",
+        ["💻 電腦版（完整功能）", "📱 手機版（基本功能）"],
+        horizontal=True,
+        help="電腦版需本地運行，手機版可在 Streamlit Cloud 使用"
+    )
+    
+    # 顯示功能說明
+    if "電腦版" in query_mode:
+        st.info("""
+        **💻 電腦版功能：**
+        - ✅ 三大法人買賣超
+        - ✅ 信用交易（融資融券）
+        - ✅ 集保股權分散
+        - ✅ 月營收分析
+        - ✅ 董監持股與質押率
+        - ✅ 智慧警示系統
+        
+        ⚠️ **需要本地運行**（證交所 API 有 IP 限制）
+        """)
+    else:
+        st.info("""
+        **📱 手機版功能：**
+        - ✅ 即時股價查詢
+        - ✅ K 線圖表
+        - ✅ 成交量分析
+        - ✅ 歷史價格數據
+        - ❌ 無法人資料
+        - ❌ 無信用交易資料
+        
+        ✅ **可在 Streamlit Cloud 使用**（任何設備隨時訪問）
+        """)
+    
+    st.markdown("---")
+    
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
         stock_code = st.text_input("股票代號", value="2330", placeholder="例：2330").strip()
     
     with col2:
-        query_date = st.date_input("查詢日期", value=datetime.now())
+        if "電腦版" in query_mode:
+            query_date = st.date_input("查詢日期", value=datetime.now())
+        else:
+            period = st.selectbox("查詢期間", ["1日", "5日", "1個月", "3個月", "6個月"], index=2)
     
     with col3:
         st.write("")
