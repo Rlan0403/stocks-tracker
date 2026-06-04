@@ -79,6 +79,21 @@ STOCK_NAMES = {
     "2207":"和泰車","9921":"巨大","9914":"美利達","3045":"台灣大","4904":"遠傳","8454":"富邦媒",
     "9933":"中鼎","1707":"葡萄王","6446":"藥華藥","4174":"浩鼎","4128":"中天","4142":"國光生","4123":"晟德",
     "9105":"泰金寶-DR","9917":"中保科","9941":"裕融","9945":"潤泰新","2105":"正新",
+    # 面板
+    "2409":"友達","3481":"群創","6116":"彩晶","3504":"揚明光",
+    # IC 通路
+    "3036":"文曄","2347":"聯強","2351":"順德","6202":"盛群",
+    # 債券型 ETF
+    "00679B":"元大美債20","00687B":"國泰20年美債","00696B":"富邦美債20年",
+    "00697B":"元大美債7-10","00720B":"元大投資級公司債","00772B":"中信高評級公司債",
+    "00773B":"中信優先金融債","00777B":"凱基AAA-AA公司債","00778B":"凱基金融債20+",
+    "00779B":"凱基美債25+","00937B":"群益ESG投等債20+","00938B":"凱基US優選非投等債",
+    "00988A":"凱基美國非投等債","00990A":"兆豐美國非投等債","00991B":"富邦中國投資級債",
+    "00942B":"台新美A公司債20+","00943B":"兆豐10年期以上A級美元公司債",
+    "00945B":"凱基美國非投等債","00937B":"群益ESG投等債20+",
+    # 其他常見
+    "2887":"台新金","2880":"華南金","2618":"長榮航","2882":"國泰金","2881":"富邦金",
+    "2027":"大成鋼","2603":"長榮","2609":"陽明","2615":"萬海",
 }
 
 # 產業分類對照表
@@ -434,9 +449,9 @@ elif mode == "法人排行":
         st.info("💡 **連續買賣顏色**：🟡 2 天 ｜ 🟠 3 天 ｜ 🔴 5 天以上")
         st.markdown("---")
         
-        tab1, tab2, tab3 = st.tabs(["🌍 外資", "💼 投信", "🏛️ 自營商"])
+        tab_overall, tab1, tab2, tab3 = st.tabs(["🎯 綜合（三大法人合計）", "🌍 外資", "💼 投信", "🏛️ 自營商"])
         
-        for tab, key, title in [(tab1,'foreign','外資'),(tab2,'trust','投信'),(tab3,'dealer','自營商')]:
+        for tab, key, title in [(tab_overall,'total','三大法人'),(tab1,'foreign','外資'),(tab2,'trust','投信'),(tab3,'dealer','自營商')]:
             with tab:
                 col_buy, col_sell = st.columns(2)
                 buy_sorted = sorted([s for s in latest_data if s[key] > 0], key=lambda x: x[key], reverse=True)[:10]
@@ -456,7 +471,8 @@ elif mode == "法人排行":
                                 row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
                             elif consec >= 2:
                                 row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
-                        name = get_stock_name(s['code'])
+                        # 優先用對照表，沒有時用 API 回傳的名稱
+                        name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
                         html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="positive">+{format_number(s[key])}</span></td><td>{badge}</td></tr>'
                     html += '</tbody></table>'
                     st.markdown(html, unsafe_allow_html=True)
@@ -475,7 +491,8 @@ elif mode == "法人排行":
                                 row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
                             elif consec >= 2:
                                 row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
-                        name = get_stock_name(s['code'])
+                        # 優先用對照表，沒有時用 API 回傳的名稱
+                        name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
                         html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="negative">{format_number(s[key])}</span></td><td>{badge}</td></tr>'
                     html += '</tbody></table>'
                     st.markdown(html, unsafe_allow_html=True)
