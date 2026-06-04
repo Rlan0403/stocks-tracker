@@ -24,11 +24,100 @@ h1 {font-size: 2rem !important; margin-bottom: 0.5rem !important;}
 .stButton>button:hover {background: #357abd; transform: translateY(-2px);}
 table {width: 100%; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-collapse: separate; border-spacing: 0;}
 thead th {background: #e9ecef; color: #2c3e50; font-weight: 700; padding: 1rem 0.75rem; text-align: center; border: none; font-size: 0.9rem;}
-@media (max-width: 768px) {thead th {padding: 0.75rem 0.5rem; font-size: 0.75rem;}}
+@media (max-width: 768px) {thead th {padding: 0.5rem 0.3rem; font-size: 0.7rem;}}
 tbody td {background: #ffffff; color: #495057; padding: 0.9rem 0.75rem; text-align: center; border-bottom: 1px solid #f1f3f5; font-size: 0.9rem;}
-@media (max-width: 768px) {tbody td {padding: 0.7rem 0.5rem; font-size: 0.8rem;}}
+@media (max-width: 768px) {tbody td {padding: 0.5rem 0.3rem; font-size: 0.7rem;}}
 tbody tr:nth-child(even) td {background: #f8f9fa;}
 tbody tr:hover td {background: #dee2e6;}
+
+/* 卡片式設計（用於綜合排名 - 手機友善） */
+.stock-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border-left: 4px solid #4a90e2;
+}
+.stock-card.streak-2 {border-left-color: #ffc107; background: #fff9e6;}
+.stock-card.streak-3 {border-left-color: #ff9800; background: #ffe0b3;}
+.stock-card.streak-5 {border-left-color: #dc3545; background: #f8d7da;}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.card-rank {
+    background: #4a90e2;
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    min-width: 32px;
+    text-align: center;
+}
+.card-code {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+.card-name {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1rem;
+    flex: 1;
+}
+.card-total {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0.4rem 0;
+}
+@media (max-width: 768px) {
+    .card-total {font-size: 1.1rem;}
+    .card-name {font-size: 0.9rem;}
+}
+.card-detail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.6);
+    border-radius: 8px;
+    margin: 0.5rem 0;
+}
+.card-detail-item {
+    text-align: center;
+    font-size: 0.85rem;
+}
+@media (max-width: 768px) {
+    .card-detail-item {font-size: 0.75rem;}
+}
+.card-detail-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+.card-detail-value {
+    font-weight: 700;
+}
+.card-detail-pct {
+    font-size: 0.65rem;
+    color: #6c757d;
+    margin-top: 0.1rem;
+}
+.card-dates {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-top: 0.3rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed #dee2e6;
+}
 .streak-2 td {background: #fff9e6 !important;}
 .streak-3 td {background: #ffe0b3 !important; border-left: 4px solid #ff9800 !important;}
 .streak-5 td {background: #f8d7da !important; border-left: 4px solid #dc3545 !important;}
@@ -455,36 +544,31 @@ elif mode == "法人排行":
         
         tab_overall, tab1, tab2, tab3 = st.tabs(["🎯 綜合（三大法人合計）", "🌍 外資", "💼 投信", "🏛️ 自營商"])
         
-        # ===== 綜合 tab (15 名 + 法人比例) =====
+        # ===== 綜合 tab (卡片式，15 名) =====
         with tab_overall:
-            col_buy, col_sell = st.columns(2)
-            buy_sorted = sorted([s for s in latest_data if s['total'] > 0], key=lambda x: x['total'], reverse=True)[:15]
-            sell_sorted = sorted([s for s in latest_data if s['total'] < 0], key=lambda x: x['total'])[:15]
-            
-            def render_overall_row(i, s, is_buy=True):
-                """渲染綜合排名的一列"""
+            def render_card(i, s, is_buy=True):
+                """渲染股票卡片"""
                 consec, direction, dates = calculate_consecutive(s['code'], history, 'total')
                 
-                row_class = ''
-                badge = '<span class="badge badge-normal">1天</span>'
+                card_class = 'stock-card'
                 target_direction = 'buy' if is_buy else 'sell'
+                badge = '<span class="badge badge-normal">1天</span>'
                 
                 if direction == target_direction:
                     if consec >= 5:
-                        row_class, badge = 'streak-5', f'<span class="badge badge-5">{consec}天</span>'
+                        card_class += ' streak-5'
+                        badge = f'<span class="badge badge-5">{consec}天</span>'
                     elif consec >= 3:
-                        row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
+                        card_class += ' streak-3'
+                        badge = f'<span class="badge badge-3">{consec}天</span>'
                     elif consec >= 2:
-                        row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
-                
-                # 日期顯示
-                date_str = format_dates_short(dates) if direction == target_direction and consec >= 2 else ''
-                date_html = f'<div style="font-size:0.7rem;color:#6c757d;margin-top:0.3rem;">{date_str}</div>' if date_str else ''
+                        card_class += ' streak-2'
+                        badge = f'<span class="badge badge-2">{consec}天</span>'
                 
                 # 名稱
                 name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
                 
-                # 三大法人比例（取絕對值算佔比，方便閱讀）
+                # 三大法人比例
                 total_abs = abs(s['foreign']) + abs(s['trust']) + abs(s['dealer'])
                 if total_abs > 0:
                     foreign_pct = (abs(s['foreign']) / total_abs) * 100
@@ -493,10 +577,10 @@ elif mode == "法人排行":
                 else:
                     foreign_pct = trust_pct = dealer_pct = 0
                 
-                # 各分量符號（正/負）
+                # 各分量顏色
                 fc = 'positive' if s['foreign'] > 0 else 'negative' if s['foreign'] < 0 else 'neutral'
                 tc = 'positive' if s['trust'] > 0 else 'negative' if s['trust'] < 0 else 'neutral'
-                dc = 'positive' if s['dealer'] > 0 else 'negative' if s['dealer'] < 0 else 'neutral'
+                dc_color = 'positive' if s['dealer'] > 0 else 'negative' if s['dealer'] < 0 else 'neutral'
                 
                 fs = '+' if s['foreign'] > 0 else ''
                 ts = '+' if s['trust'] > 0 else ''
@@ -505,86 +589,99 @@ elif mode == "法人排行":
                 total_class = 'positive' if is_buy else 'negative'
                 total_sign = '+' if is_buy else ''
                 
-                row = f'<tr class="{row_class}">'
-                row += f'<td>{i:02d}</td>'
-                row += f'<td><strong>{s["code"]}</strong></td>'
-                row += f'<td>{name}</td>'
-                row += f'<td><strong><span class="{total_class}">{total_sign}{format_number(s["total"])}</span></strong></td>'
-                row += f'<td><span class="{fc}">{fs}{format_number(s["foreign"])}</span><div style="font-size:0.7rem;color:#6c757d;">{foreign_pct:.0f}%</div></td>'
-                row += f'<td><span class="{tc}">{ts}{format_number(s["trust"])}</span><div style="font-size:0.7rem;color:#6c757d;">{trust_pct:.0f}%</div></td>'
-                row += f'<td><span class="{dc}">{ds}{format_number(s["dealer"])}</span><div style="font-size:0.7rem;color:#6c757d;">{dealer_pct:.0f}%</div></td>'
-                row += f'<td>{badge}{date_html}</td>'
-                row += '</tr>'
-                return row
+                # 日期
+                date_str = format_dates_short(dates) if direction == target_direction and consec >= 2 else ''
+                
+                html = f'<div class="{card_class}">'
+                html += '<div class="card-header">'
+                html += f'<span class="card-rank">{i:02d}</span>'
+                html += f'<span class="card-code">{s["code"]}</span>'
+                html += f'<span class="card-name">{name}</span>'
+                html += f'{badge}'
+                html += '</div>'
+                
+                html += f'<div class="card-total"><span class="{total_class}">{total_sign}{format_number(s["total"])} 張</span></div>'
+                
+                html += '<div class="card-detail">'
+                html += f'<div class="card-detail-item"><div class="card-detail-label">外資</div><div class="card-detail-value {fc}">{fs}{format_number(s["foreign"])}</div><div class="card-detail-pct">{foreign_pct:.0f}%</div></div>'
+                html += f'<div class="card-detail-item"><div class="card-detail-label">投信</div><div class="card-detail-value {tc}">{ts}{format_number(s["trust"])}</div><div class="card-detail-pct">{trust_pct:.0f}%</div></div>'
+                html += f'<div class="card-detail-item"><div class="card-detail-label">自營</div><div class="card-detail-value {dc_color}">{ds}{format_number(s["dealer"])}</div><div class="card-detail-pct">{dealer_pct:.0f}%</div></div>'
+                html += '</div>'
+                
+                if date_str:
+                    html += f'<div class="card-dates">📅 {date_str}</div>'
+                
+                html += '</div>'
+                return html
             
-            with col_buy:
-                st.subheader("▲ 三大法人 買超 TOP 15")
-                html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>合計</th><th>外資</th><th>投信</th><th>自營</th><th>連買</th></tr></thead><tbody>'
-                for i, s in enumerate(buy_sorted, 1):
-                    html += render_overall_row(i, s, is_buy=True)
-                html += '</tbody></table>'
-                st.markdown(html, unsafe_allow_html=True)
+            buy_sorted = sorted([s for s in latest_data if s['total'] > 0], key=lambda x: x['total'], reverse=True)[:15]
+            sell_sorted = sorted([s for s in latest_data if s['total'] < 0], key=lambda x: x['total'])[:15]
             
-            with col_sell:
-                st.subheader("▼ 三大法人 賣超 TOP 15")
-                html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>合計</th><th>外資</th><th>投信</th><th>自營</th><th>連賣</th></tr></thead><tbody>'
-                for i, s in enumerate(sell_sorted, 1):
-                    html += render_overall_row(i, s, is_buy=False)
-                html += '</tbody></table>'
-                st.markdown(html, unsafe_allow_html=True)
+            # 買超
+            st.markdown("### ▲ 三大法人 買超 TOP 15")
+            html_buy = ''.join([render_card(i, s, is_buy=True) for i, s in enumerate(buy_sorted, 1)])
+            st.markdown(html_buy, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # 賣超
+            st.markdown("### ▼ 三大法人 賣超 TOP 15")
+            html_sell = ''.join([render_card(i, s, is_buy=False) for i, s in enumerate(sell_sorted, 1)])
+            st.markdown(html_sell, unsafe_allow_html=True)
         
-        # ===== 各別法人 tab (10 名 + 日期) =====
+        # ===== 各別法人 tab (10 名，垂直堆疊) =====
         for tab, key, title in [(tab1,'foreign','外資'),(tab2,'trust','投信'),(tab3,'dealer','自營商')]:
             with tab:
-                col_buy, col_sell = st.columns(2)
                 buy_sorted = sorted([s for s in latest_data if s[key] > 0], key=lambda x: x[key], reverse=True)[:10]
                 sell_sorted = sorted([s for s in latest_data if s[key] < 0], key=lambda x: x[key])[:10]
                 
-                with col_buy:
-                    st.subheader(f"▲ {title} 買超 TOP 10")
-                    html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>買超(張)</th><th>連買</th></tr></thead><tbody>'
-                    for i, s in enumerate(buy_sorted, 1):
-                        consec, direction, dates = calculate_consecutive(s['code'], history, key)
-                        row_class = ''
-                        badge = '<span class="badge badge-normal">1天</span>'
-                        if direction == 'buy':
-                            if consec >= 5:
-                                row_class, badge = 'streak-5', f'<span class="badge badge-5">{consec}天</span>'
-                            elif consec >= 3:
-                                row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
-                            elif consec >= 2:
-                                row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
-                        
-                        date_str = format_dates_short(dates) if direction == 'buy' and consec >= 2 else ''
-                        date_html = f'<div style="font-size:0.7rem;color:#6c757d;margin-top:0.3rem;">{date_str}</div>' if date_str else ''
-                        
-                        name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
-                        html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="positive">+{format_number(s[key])}</span></td><td>{badge}{date_html}</td></tr>'
-                    html += '</tbody></table>'
-                    st.markdown(html, unsafe_allow_html=True)
+                # 買超
+                st.markdown(f"### ▲ {title} 買超 TOP 10")
+                html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>買超(張)</th><th>連買</th></tr></thead><tbody>'
+                for i, s in enumerate(buy_sorted, 1):
+                    consec, direction, dates = calculate_consecutive(s['code'], history, key)
+                    row_class = ''
+                    badge = '<span class="badge badge-normal">1天</span>'
+                    if direction == 'buy':
+                        if consec >= 5:
+                            row_class, badge = 'streak-5', f'<span class="badge badge-5">{consec}天</span>'
+                        elif consec >= 3:
+                            row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
+                        elif consec >= 2:
+                            row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
+                    
+                    date_str = format_dates_short(dates) if direction == 'buy' and consec >= 2 else ''
+                    date_html = f'<div style="font-size:0.65rem;color:#6c757d;margin-top:0.3rem;">{date_str}</div>' if date_str else ''
+                    
+                    name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
+                    html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="positive">+{format_number(s[key])}</span></td><td>{badge}{date_html}</td></tr>'
+                html += '</tbody></table>'
+                st.markdown(html, unsafe_allow_html=True)
                 
-                with col_sell:
-                    st.subheader(f"▼ {title} 賣超 TOP 10")
-                    html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>賣超(張)</th><th>連賣</th></tr></thead><tbody>'
-                    for i, s in enumerate(sell_sorted, 1):
-                        consec, direction, dates = calculate_consecutive(s['code'], history, key)
-                        row_class = ''
-                        badge = '<span class="badge badge-normal">1天</span>'
-                        if direction == 'sell':
-                            if consec >= 5:
-                                row_class, badge = 'streak-5', f'<span class="badge badge-5">{consec}天</span>'
-                            elif consec >= 3:
-                                row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
-                            elif consec >= 2:
-                                row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
-                        
-                        date_str = format_dates_short(dates) if direction == 'sell' and consec >= 2 else ''
-                        date_html = f'<div style="font-size:0.7rem;color:#6c757d;margin-top:0.3rem;">{date_str}</div>' if date_str else ''
-                        
-                        name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
-                        html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="negative">{format_number(s[key])}</span></td><td>{badge}{date_html}</td></tr>'
-                    html += '</tbody></table>'
-                    st.markdown(html, unsafe_allow_html=True)
+                st.markdown("---")
+                
+                # 賣超
+                st.markdown(f"### ▼ {title} 賣超 TOP 10")
+                html = '<table><thead><tr><th>排名</th><th>代號</th><th>名稱</th><th>賣超(張)</th><th>連賣</th></tr></thead><tbody>'
+                for i, s in enumerate(sell_sorted, 1):
+                    consec, direction, dates = calculate_consecutive(s['code'], history, key)
+                    row_class = ''
+                    badge = '<span class="badge badge-normal">1天</span>'
+                    if direction == 'sell':
+                        if consec >= 5:
+                            row_class, badge = 'streak-5', f'<span class="badge badge-5">{consec}天</span>'
+                        elif consec >= 3:
+                            row_class, badge = 'streak-3', f'<span class="badge badge-3">{consec}天</span>'
+                        elif consec >= 2:
+                            row_class, badge = 'streak-2', f'<span class="badge badge-2">{consec}天</span>'
+                    
+                    date_str = format_dates_short(dates) if direction == 'sell' and consec >= 2 else ''
+                    date_html = f'<div style="font-size:0.65rem;color:#6c757d;margin-top:0.3rem;">{date_str}</div>' if date_str else ''
+                    
+                    name = STOCK_NAMES.get(s['code']) or s.get('name') or s['code']
+                    html += f'<tr class="{row_class}"><td>{i:02d}</td><td><strong>{s["code"]}</strong></td><td>{name}</td><td><span class="negative">{format_number(s[key])}</span></td><td>{badge}{date_html}</td></tr>'
+                html += '</tbody></table>'
+                st.markdown(html, unsafe_allow_html=True)
 
 # ==================== 成交量排行 ====================
 
