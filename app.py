@@ -408,6 +408,62 @@ def fetch_yf_simple(code):
     except:
         return None
 
+@st.cache_data(ttl=600)
+def fetch_dividend_info(stock_code):
+    """取得個股股利資訊"""
+    try:
+        ticker = yf.Ticker(f"{stock_code}.TW")
+        
+        try:
+            dividends = ticker.dividends
+        except:
+            dividends = pd.Series(dtype=float)
+        
+        try:
+            info = ticker.info
+        except:
+            info = {}
+        
+        # 如果是上櫃
+        if dividends.empty and not info:
+            ticker = yf.Ticker(f"{stock_code}.TWO")
+            try:
+                dividends = ticker.dividends
+            except:
+                dividends = pd.Series(dtype=float)
+            try:
+                info = ticker.info
+            except:
+                info = {}
+        
+        # 除息日
+        ex_div_date = None
+        if info.get('exDividendDate'):
+            try:
+                ex_div_date = datetime.fromtimestamp(info['exDividendDate']).strftime('%Y-%m-%d')
+            except:
+                pass
+        
+        # 處理 dividend_yield（Yahoo Finance 有時是小數有時是百分比）
+        dy = info.get('dividendYield') or info.get('trailingAnnualDividendYield')
+        if dy and dy > 1:  # 如果大於 1，可能已經是百分比
+            dy = dy / 100
+        
+        return {
+            'code': stock_code,
+            'name': get_stock_name(stock_code) if get_stock_name(stock_code) != stock_code else info.get('longName', stock_code),
+            'industry': get_industry(stock_code),
+            'dividends': dividends,
+            'info': info,
+            'ex_dividend_date': ex_div_date,
+            'dividend_rate': info.get('dividendRate') or info.get('trailingAnnualDividendRate'),
+            'dividend_yield': dy,
+            'payout_ratio': info.get('payoutRatio'),
+            'current_price': info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose'),
+        }
+    except:
+        return None
+
 # ==================== UI ====================
 
 col_title, col_mode = st.columns([3, 1])
@@ -416,7 +472,7 @@ with col_title:
     st.caption("✨ 個股分析、法人排行、成交量排行 + 同產業推薦")
 with col_mode:
     st.write("")
-    mode = st.radio("模式", ["個股分析", "法人排行", "成交量排行"], horizontal=True, label_visibility="collapsed")
+    mode = st.radio("模式", ["個股分析", "法人排行", "成交量排行", "除權息資訊"], horizontal=True, label_visibility="collapsed")
 
 st.markdown("---")
 
@@ -685,7 +741,7 @@ elif mode == "法人排行":
 
 # ==================== 成交量排行 ====================
 
-else:
+elif mode == "成交量排行":
     st.subheader("💰 成交量排行 + 同產業推薦")
     
     market_stocks = [
@@ -780,5 +836,216 @@ else:
     else:
         st.info("👆 點擊「更新資料」開始查詢")
 
+# ==================== 除權息資訊 ====================
+
+else:  # mode == "除權息資訊"
+    st.subheader("💰 除權息與股利發放")
+    
+    sub_tab1, sub_tab2 = st.tabs(["📅 個股股利查詢", "📊 高殖利率排行"])
+    
+    # ===== 個股股利查詢 =====
+    with sub_tab1:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            div_code = st.text_input("股票代號", value="0056", placeholder="例：0056、2330", key="div_code").strip()
+        with col2:
+            st.write("")
+            st.write("")
+            div_btn = st.button("🔍 查詢", type="primary", use_container_width=True, key="div_btn")
+        
+        if div_btn and div_code:
+            with st.spinner('查詢股利資訊中...'):
+                div_data = fetch_dividend_info(div_code)
+            
+            if not div_data:
+                st.error(f"❌ 查無股票代號 {div_code}")
+            else:
+                col_n, col_s = st.columns([4, 1])
+                with col_n:
+                    st.markdown(f"### {div_data['name']} ({div_code})")
+                    st.caption(f"📂 產業：{div_data['industry']}")
+                with col_s:
+                    st.markdown('<span class="source-tag source-yahoo">📊 Yahoo Finance</span>', unsafe_allow_html=True)
+                
+                # 基本資訊卡片
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    if div_data['dividend_yield']:
+                        yield_pct = div_data['dividend_yield'] * 100
+                        st.metric("殖利率", f"{yield_pct:.2f}%")
+                    else:
+                        st.metric("殖利率", "N/A")
+                
+                with col2:
+                    if div_data['dividend_rate']:
+                        st.metric("年化股利", f"${div_data['dividend_rate']:.2f}")
+                    else:
+                        st.metric("年化股利", "N/A")
+                
+                with col3:
+                    if div_data['current_price']:
+                        st.metric("目前股價", f"${div_data['current_price']:.2f}")
+                    else:
+                        st.metric("目前股價", "N/A")
+                
+                with col4:
+                    if div_data['ex_dividend_date']:
+                        st.metric("下次除息日", div_data['ex_dividend_date'])
+                    else:
+                        st.metric("下次除息日", "N/A")
+                
+                # 歷年股利
+                if not div_data['dividends'].empty:
+                    st.markdown("---")
+                    st.subheader("📈 歷年股利發放")
+                    
+                    # 圖表
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(
+                        x=div_data['dividends'].index,
+                        y=div_data['dividends'].values,
+                        marker_color='#4a90e2',
+                        name='現金股利',
+                        text=[f"${v:.2f}" for v in div_data['dividends'].values],
+                        textposition='outside'
+                    ))
+                    fig.update_layout(
+                        yaxis_title='股利 (TWD)',
+                        xaxis_title='除息日',
+                        template='plotly_white',
+                        height=400
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # 統計
+                    dividends_list = div_data['dividends'].tolist()
+                    total_div = sum(dividends_list)
+                    avg_div = total_div / len(dividends_list) if dividends_list else 0
+                    max_div = max(dividends_list) if dividends_list else 0
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("累積股利", f"${total_div:.2f}")
+                    with col2:
+                        st.metric("平均股利", f"${avg_div:.2f}")
+                    with col3:
+                        st.metric("最高股利", f"${max_div:.2f}")
+                    
+                    # 詳細表格
+                    with st.expander("📋 完整股利明細"):
+                        div_df = div_data['dividends'].to_frame(name='現金股利')
+                        div_df.index = pd.to_datetime(div_df.index).strftime('%Y-%m-%d')
+                        div_df.index.name = '除息日'
+                        div_df = div_df.sort_index(ascending=False)
+                        div_df['現金股利'] = div_df['現金股利'].round(3)
+                        st.dataframe(div_df, use_container_width=True)
+                else:
+                    st.info("📊 此股票暫無股利歷史資料（可能是新上市或未配發股利的股票）")
+    
+    # ===== 高殖利率排行 =====
+    with sub_tab2:
+        st.info("💡 大盤主要股票股利資訊（按殖利率排序）")
+        
+        # 殖利率追蹤清單
+        dividend_stocks = [
+            # ETF
+            "0050", "0056", "00878", "006208", "00929", "00919", "00713", "00701",
+            "00733", "0051", "00940", "00939", "00692", "00850",
+            # 高殖利率傳產
+            "2412", "3045", "4904", "1216", "2912", "1303", "1301", "1326",
+            # 金融
+            "2891", "2881", "2882", "2884", "2886", "2885", "2890", "2887", "2880",
+            "2883", "2892", "5880", "5876",
+            # 電子權值
+            "2330", "2317", "2454", "2382", "2308",
+            # 其他
+            "2002", "2207", "9921", "9910", "1101", "1102",
+        ]
+        
+        if st.button("🔄 載入股利資料", type="primary"):
+            st.session_state['dividend_overview'] = None
+        
+        if 'dividend_overview' not in st.session_state or st.session_state.get('dividend_overview') is None:
+            with st.spinner(f'查詢 {len(dividend_stocks)} 支股票股利資訊...'):
+                progress = st.progress(0)
+                results = []
+                for i, code in enumerate(dividend_stocks):
+                    data = fetch_dividend_info(code)
+                    if data and (data['dividend_yield'] or data['dividend_rate']):
+                        results.append(data)
+                    progress.progress((i + 1) / len(dividend_stocks))
+                progress.empty()
+                st.session_state['dividend_overview'] = results
+                st.session_state['div_update_time'] = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        
+        results = st.session_state.get('dividend_overview', [])
+        
+        if results:
+            # 按殖利率排序
+            results.sort(key=lambda x: x['dividend_yield'] or 0, reverse=True)
+            
+            st.caption(f"📅 最後更新：{st.session_state.get('div_update_time', 'N/A')}")
+            st.markdown(f"**共 {len(results)} 支股票**")
+            
+            # 殖利率分級說明
+            st.markdown("""
+            **🎨 殖利率分級：**
+            🔴 高殖利率 (≥5%) ｜ 🟡 中殖利率 (3-5%) ｜ 🔵 一般殖利率 (<3%)
+            """)
+            
+            st.markdown("---")
+            
+            # 顯示卡片
+            for i, r in enumerate(results, 1):
+                yield_pct = (r['dividend_yield'] or 0) * 100
+                
+                # 殖利率分級顏色
+                if yield_pct >= 5:
+                    border_color = "#dc3545"
+                    bg_color = "#f8d7da"
+                elif yield_pct >= 3:
+                    border_color = "#ffc107"
+                    bg_color = "#fff9e6"
+                else:
+                    border_color = "#4a90e2"
+                    bg_color = "#ffffff"
+                
+                html = f'<div class="stock-card" style="border-left-color: {border_color}; background: {bg_color};">'
+                html += '<div class="card-header">'
+                html += f'<span class="card-rank">{i:02d}</span>'
+                html += f'<span class="card-code">{r["code"]}</span>'
+                html += f'<span class="card-name">{r["name"]}</span>'
+                html += f'<span style="color: {border_color}; font-weight: 700; font-size: 1.2rem;">{yield_pct:.2f}%</span>'
+                html += '</div>'
+                
+                html += '<div class="card-detail">'
+                
+                # 年化股利
+                if r['dividend_rate']:
+                    html += f'<div class="card-detail-item"><div class="card-detail-label">年化股利</div><div class="card-detail-value">${r["dividend_rate"]:.2f}</div></div>'
+                else:
+                    html += '<div class="card-detail-item"><div class="card-detail-label">年化股利</div><div class="card-detail-value neutral">N/A</div></div>'
+                
+                # 股價
+                if r['current_price']:
+                    html += f'<div class="card-detail-item"><div class="card-detail-label">股價</div><div class="card-detail-value">${r["current_price"]:.2f}</div></div>'
+                else:
+                    html += '<div class="card-detail-item"><div class="card-detail-label">股價</div><div class="card-detail-value neutral">N/A</div></div>'
+                
+                # 下次除息
+                date_display = r['ex_dividend_date'] or 'N/A'
+                html += f'<div class="card-detail-item"><div class="card-detail-label">下次除息</div><div class="card-detail-value" style="font-size: 0.85rem;">{date_display}</div></div>'
+                
+                html += '</div>'
+                
+                # 產業標籤
+                html += f'<div style="font-size: 0.75rem; color: #6c757d; margin-top: 0.4rem;">📂 {r["industry"]}</div>'
+                
+                html += '</div>'
+                st.markdown(html, unsafe_allow_html=True)
+        else:
+            st.info("👆 點擊「載入股利資料」開始查詢")
+
 st.markdown("---")
-st.caption("📊 資料來源：證交所 OpenAPI（法人）+ Yahoo Finance（成交量、個股） | ⚠️ 僅供參考，非投資建議")
+st.caption("📊 資料來源：證交所 OpenAPI（法人）+ Yahoo Finance（成交量、個股、股利） | ⚠️ 僅供參考，非投資建議")
